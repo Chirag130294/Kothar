@@ -1,7 +1,11 @@
 // Service worker: makes the app SHELL load offline. Pantry DATA is cached separately by
 // Firestore's own offline persistence (firebase-init.js), so this file never touches it.
 // Bump VERSION whenever you deploy new code so phones pick it up.
+// Change this:
 const VERSION = 'kothar-v1';
+
+// To this (or any new name):
+const VERSION = 'kothar-v2';
 
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/styles.css',
