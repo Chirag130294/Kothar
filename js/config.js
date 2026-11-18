@@ -1,11 +1,17 @@
-// Firebase console -> Project settings -> General -> Your apps -> Web app -> "SDK setup and configuration".
-// These values are NOT secrets (they ship to every browser). Your data is protected by
-// firestore.rules, not by hiding this file.
-export const firebaseConfig = {
-  apiKey: 'YOUR_API_KEY',
-  authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
-  projectId: 'YOUR_PROJECT_ID',
-  storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
-  messagingSenderId: 'YOUR_SENDER_ID',
-  appId: 'YOUR_APP_ID',
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyC5w0-RiWXS8Pkxr5T0xB309smeQq4ZGEg",
+  authDomain: "kothar-ec69d.firebaseapp.com",
+  projectId: "kothar-ec69d",
+  storageBucket: "kothar-ec69d.firebasestorage.app",
+  messagingSenderId: "548033666791",
+  appId: "1:548033666791:web:c64622ac97d35020514c42"
 };
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
