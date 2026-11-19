@@ -3,19 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Kothar — Household Pantry</title>
+  <title>Kothar · Household Pantry</title>
   <meta name="description" content="Track bulk pantry staples for the whole family and get smart shopping suggestions.">
-  <meta name="theme-color" content="#B45309">
+  <meta name="theme-color" content="#14110E">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Kothar">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+  <div class="glow" aria-hidden="true"></div>
   <div id="app"></div>
+  <dialog id="sheet" class="sheet" aria-label="Details"><div id="sbody"></div></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
   <noscript>Kothar needs JavaScript to run.</noscript>
   <script type="module" src="js/app.js"></script>
 </body>

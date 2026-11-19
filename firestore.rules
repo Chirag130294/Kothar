@@ -122,14 +122,29 @@ service cloud.firestore {
       }
 
       // ---- shared pantry data: approved members only ----
+      // Item = one pantry staple with its packs. Size limits keep one bad client from bloating the doc.
       match /items/{itemId} {
         allow read, delete: if isApproved(hid);
         allow create, update: if isApproved(hid)
           && request.resource.data.name is string
-          && request.resource.data.name.size() <= 80;
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 80
+          && (!('gu' in request.resource.data) || (request.resource.data.gu is string && request.resource.data.gu.size() <= 80))
+          && (!('packs' in request.resource.data) || (request.resource.data.packs is list && request.resource.data.packs.size() <= 60))
+          && (!('recent' in request.resource.data) || (request.resource.data.recent is list && request.resource.data.recent.size() <= 60))
+          && (!('lifespans' in request.resource.data) || (request.resource.data.lifespans is list && request.resource.data.lifespans.size() <= 60));
       }
 
-      // Append-only audit trail (restocked / emptied / undo).
+      // Shared barcode memory: one doc per barcode number, any approved member can teach or fix it.
+      match /barcodes/{code} {
+        allow read, delete: if isApproved(hid);
+        allow create, update: if isApproved(hid)
+          && code.matches('^[0-9]{6,14}$')
+          && request.resource.data.itemId is string
+          && request.resource.data.itemId.size() <= 100;
+      }
+
+      // Append-only audit trail (bought / finished / import / undo). itemId and itemName may be null (imports).
       match /logs/{logId} {
         allow read: if isApproved(hid);
         allow create: if isApproved(hid) && request.resource.data.by == request.auth.uid;

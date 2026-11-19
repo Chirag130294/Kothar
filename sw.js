@@ -1,16 +1,15 @@
-// Service worker: makes the app SHELL load offline. Pantry DATA is cached separately by
-// Firestore's own offline persistence (firebase-init.js), so this file never touches it.
+// Service worker: makes the app SHELL load offline and fast. Pantry DATA is cached separately by
+// Firestore's own offline persistence, so this file never touches it. Cross-origin requests (Firebase,
+// the optional scanner/Excel/photo libraries, Open Food Facts) are left alone.
 // Bump VERSION whenever you deploy new code so phones pick it up.
-// Change this:
-const VERSION = 'kothar-v1';
-
-// To this (or any new name):
-const VERSION = 'kothar-v2';
+const VERSION = 'kothar-v2.1';
 
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/styles.css',
-  'js/app.js', 'js/fb.js', 'js/config.js', 'js/firebase-init.js',
-  'js/household.js', 'js/items.js', 'js/predict.js', 'js/seed-data.js',
+  'js/app.js', 'js/ctx.js', 'js/config.js', 'js/catalog.js', 'js/units.js', 'js/stock.js', 'js/importer.js',
+  'js/store-local.js', 'js/store-firebase.js', 'js/fb.js', 'js/firebase-init.js', 'js/household.js',
+  'js/ui/dom.js', 'js/ui/thumb.js', 'js/ui/pantry.js', 'js/ui/sheets.js', 'js/ui/form.js',
+  'js/ui/shop.js', 'js/ui/family.js', 'js/ui/settings.js', 'js/ui/setup.js', 'js/ui/scan.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
 ];
 
@@ -22,44 +21,27 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim()),
-  );
+      .then(() => self.clients.claim()));
 });
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
 
-  // Page loads: network first (so deploys show up), cached shell when offline.
+  // Pages: network first (so a new deploy shows up), cached copy when offline.
   if (req.mode === 'navigate') {
-    event.respondWith(fetch(req).catch(() => caches.match('index.html')));
+    event.respondWith(
+      fetch(req).then((res) => { const copy = res.clone(); caches.open(VERSION).then((c) => c.put('index.html', copy)); return res; })
+        .catch(() => caches.match('index.html').then((r) => r || caches.match('./'))));
     return;
   }
-
-  // Our own files: serve from cache instantly, refresh in the background.
-  if (url.origin === self.location.origin) {
-    event.respondWith(
-      caches.open(VERSION).then(async (cache) => {
-        const cached = await cache.match(req);
-        const refresh = fetch(req).then((res) => { if (res.ok) cache.put(req, res.clone()); return res; }).catch(() => cached);
-        return cached || refresh;
-      }),
-    );
-    return;
-  }
-
-  // Firebase SDK modules: versioned URLs never change, so cache-first is safe.
-  if (url.hostname === 'www.gstatic.com' && url.pathname.startsWith('/firebasejs/')) {
-    event.respondWith(
-      caches.open(VERSION).then(async (cache) => {
-        const cached = await cache.match(req);
-        if (cached) return cached;
-        const res = await fetch(req);
-        if (res.ok) cache.put(req, res.clone());
-        return res;
-      }),
-    );
-  }
-  // Everything else (Firestore, Auth, Google sign-in) goes straight to the network.
+  // Everything else on this site: instant from cache, refreshed in the background.
+  event.respondWith(
+    caches.open(VERSION).then(async (cache) => {
+      const cached = await cache.match(req);
+      const refresh = fetch(req).then((res) => { if (res.ok) cache.put(req, res.clone()); return res; }).catch(() => cached);
+      return cached || refresh;
+    }));
 });
