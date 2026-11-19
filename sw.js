@@ -2,7 +2,7 @@
 // Firestore's own offline persistence, so this file never touches it. Cross-origin requests (Firebase,
 // the optional scanner/Excel/photo libraries, Open Food Facts) are left alone.
 // Bump VERSION whenever you deploy new code so phones pick it up.
-const VERSION = 'kothar-v2.1';
+const VERSION = 'kothar-v2.3';
 
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/styles.css',
