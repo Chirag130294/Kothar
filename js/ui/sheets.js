@@ -2,7 +2,7 @@
 // Whole packs are the default path: Finished (one tap) and Bought. Partial use lives behind Advanced.
 import { ctx, now, byId } from '../ctx.js';
 import { U, UNITS_OF, toBase, fmt, packLabel } from '../units.js';
-import { total, cap, est, daysLeft, status, openPack, sealedCount, addPacks, finishPack, takeAmount, setLeft, setList, CONFIG, DAY } from '../stock.js';
+import { total, cap, est, daysLeft, status, openPack, sealedCount, addPacks, finishPack, usePacks, packGroups, takeAmount, setLeft, setList, CONFIG, DAY } from '../stock.js';
 import { catName } from '../catalog.js';
 import { h, icon, toast, sheet, shortName } from './dom.js';
 import { tileEl } from './thumb.js';
@@ -35,6 +35,46 @@ function usageText(it) {
   return e.n >= CONFIG.minSamples && dl != null && total(it) > 0 ? `${base} Roughly ${Math.round(dl)} days left.` : base;
 }
 
+/* ───────────────────────────────── taking packs out ───────────────────────────────── */
+
+/** One swipe: remove a single pack (one size) or ask which size (several sizes). */
+export function useQuick(it0) {
+  const it = byId(it0.id) || it0;
+  const g = packGroups(it);
+  if (!g.length) { toast(`${shortName(it.name)} has nothing in stock.`); return; }
+  if (g.length === 1) { apply(it, usePacks(it, [{ label: g[0].label, count: 1 }], now())); return; }
+  openUse(it);
+}
+
+/** "Which pack did you take, and how many?" */
+export function openUse(it0) {
+  const it = byId(it0.id) || it0;
+  const groups = packGroups(it);
+  if (!groups.length) { toast(`${shortName(it.name)} has nothing in stock.`); return; }
+  const n = Object.fromEntries(groups.map((g) => [g.label, groups.length === 1 ? 1 : 0]));
+  const root = h('div', { class: 'stack' });
+  const step = (g, d) => { n[g.label] = Math.max(0, Math.min(g.count, n[g.label] + d)); draw(); };
+  const draw = () => {
+    const sum = Object.values(n).reduce((a, b) => a + b, 0);
+    root.replaceChildren(
+      h('div', { class: 'shead' }, tileEl(it, { label: false }),
+        h('div', { class: 'grow' }, h('h2', {}, shortName(it.name)), h('div', { class: 'muted small' }, 'Which pack did you take, and how many?')),
+        h('button', { class: 'iconbtn', 'aria-label': 'Close', onclick: () => sheet.close() }, icon('x', 18))),
+      h('div', { class: 'list' }, groups.map((g) => h('div', { class: 'usegrp' },
+        h('div', { class: 'grow' }, h('b', {}, g.label), h('div', { class: 'muted small' }, `${g.count} in the pantry${g.opened ? ', 1 opened' : ''}`)),
+        h('button', { class: 'iconbtn', 'aria-label': `One fewer ${g.label}`, disabled: n[g.label] <= 0, onclick: () => step(g, -1) }, icon('minus', 18)),
+        h('b', { class: 'usen', 'aria-live': 'polite' }, String(n[g.label])),
+        h('button', { class: 'iconbtn', 'aria-label': `One more ${g.label}`, disabled: n[g.label] >= g.count, onclick: () => step(g, 1) }, icon('plus', 18))))),
+      h('button', { class: 'btn primary', style: 'min-height:54px', disabled: !sum, onclick: () => {
+        const cur = byId(it.id) || it;
+        const res = usePacks(cur, groups.map((g) => ({ label: g.label, count: n[g.label] })).filter((p) => p.count > 0), now());
+        sheet.close();
+        if (res) apply(cur, res); else toast('Nothing to remove.');
+      } }, sum ? `Remove ${sum} pack${sum > 1 ? 's' : ''}` : 'Choose how many'));
+  };
+  sheet.open(root); draw();
+}
+
 /* ───────────────────────────────── item detail ───────────────────────────────── */
 
 export function openItem(id) {
@@ -45,17 +85,28 @@ export function openItem(id) {
     const op = openPack(it);
     const stock = total(it);
 
+    // Identical sealed packs are shown as "10 lb × 2"; a pack that was partly used gets its own row.
+    const partial = it.packs.filter((p) => p.openedAt != null || p.left < p.amt);
+    const whole = it.packs.filter((p) => !partial.includes(p));
+    const wg = new Map();
+    for (const p of whole) { const e = wg.get(p.label) || { label: p.label, n: 0, left: 0 }; e.n++; e.left += p.left; wg.set(p.label, e); }
     const packs = it.packs.length
-      ? h('div', { class: 'list' }, it.packs.map((p) => h('div', { class: 'packrow' },
-        h('div', { class: 'grow' },
-          h('div', { style: 'font-weight:600' }, `${p.label} pack `, h('span', { class: 'muted', style: 'font-weight:400' }, `· ${openedText(p)}`)),
-          p.openedAt != null && p.left < p.amt ? h('div', { class: 'bar' + (st === 'low' ? ' low' : '') }, h('i', { style: `width:${Math.max(3, p.left / p.amt * 100)}%` })) : null),
-        h('div', { class: 'muted', style: 'font-size:14px' }, fmt(p.left, it.dim, ctx.units)))))
+      ? h('div', { class: 'list' },
+        [...wg.values()].map((g) => h('div', { class: 'packrow' }, h('div', { class: 'grow' }, h('div', { style: 'font-weight:600' }, `${g.label} pack`, g.n > 1 ? ` × ${g.n}` : '')),
+          h('div', { class: 'muted', style: 'font-size:14px' }, fmt(g.left, it.dim, ctx.units)))),
+        partial.map((p) => h('div', { class: 'packrow' },
+          h('div', { class: 'grow' },
+            h('div', { style: 'font-weight:600' }, `${p.label} pack `, h('span', { class: 'muted', style: 'font-weight:400' }, `· ${openedText(p)}`)),
+            p.left < p.amt ? h('div', { class: 'bar' + (st === 'low' ? ' low' : '') }, h('i', { style: `width:${Math.max(3, p.left / p.amt * 100)}%` })) : null),
+          h('div', { class: 'muted', style: 'font-size:14px' }, fmt(p.left, it.dim, ctx.units)))))
       : h('div', { class: 'card muted' }, it.everStocked ? 'Nothing in stock. Tap Bought when you buy it.' : 'Tap Bought to say how much you have.');
 
+    // One size in the pantry: one pack is removed. Several sizes: ask which one.
     const finish = h('button', { class: 'btn primary grow', disabled: !it.packs.length, onclick: () => {
-      apply(it, finishPack(it, null, now())); if (it.packs.length <= 1) sheet.close();
-    } }, 'Finished');
+      const g = packGroups(it);
+      if (g.length > 1) { openUse(it); return; }
+      useQuick(it); if (it.packs.length <= 1) sheet.close();
+    } }, 'Finished a pack');
     const bought = h('button', { class: 'btn grow' + (it.packs.length ? '' : ' primary'), onclick: () => openBought(it) }, it.packs.length ? 'Bought more' : 'Bought');
 
     return h('div', { class: 'stack' },
@@ -67,8 +118,7 @@ export function openItem(id) {
       h('div', {}, h('span', { class: 'big' }, stock > 0 ? fmt(stock, it.dim, ctx.units) : it.everStocked ? 'Out' : 'No amount yet'), cap(it) > 0 && stock > 0 && stock < cap(it) ? h('span', { class: 'muted', style: 'margin-left:8px' }, `of ${fmt(cap(it), it.dim, ctx.units)}`) : null),
       packs,
       h('div', { class: 'row' }, finish, bought),
-      it.packs.length ? h('div', { class: 'muted small' }, op || sealedCount(it)
-        ? 'Finished closes the opened pack and opens the next sealed one for you.' : '') : null,
+      it.packs.length ? h('div', { class: 'muted small' }, 'Finished removes one pack. Kothar times how long each pack lasts to predict when you run out.') : null,
       it.packs.length ? h('details', { class: 'adv' },
         h('summary', {}, 'Advanced', icon('chev', 18)),
         h('div', { class: 'inner' },

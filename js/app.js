@@ -11,7 +11,7 @@
  *     signed in, no household       -> Create household (Google) / "open your invite link" (anonymous)
  *     signed in, household          -> watch my member doc: pending = Waiting room, approved = the app
  */
-import { ctx, loadSettings, toBuyCount } from './ctx.js';
+import { ctx, loadSettings, saveSettings, toBuyCount, applyShared } from './ctx.js';
 import { h, $, icon, sheet, toast, guarded } from './ui/dom.js';
 import { firebaseConfig } from './config.js';
 import { createLocalStore } from './store-local.js';
@@ -29,14 +29,20 @@ const tsMs = (t) => (t && typeof t.toMillis === 'function' ? t.toMillis() : null
 /* ───────────────────────────── shell ───────────────────────────── */
 
 let shellUp = false;
-let searchEl = null;
+let searchEl = null, searchRow = null, viewBtn = null;
 
 function mountShell() {
   searchEl = h('input', { type: 'search', placeholder: 'Search · દાળ, rice, haldi', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'Search pantry',
     oninput: (e) => { ctx.query = e.target.value; if (ctx.tab !== 'pantry') ctx.tab = 'pantry'; ctx.render(); } });
   searchEl.value = ctx.query;
+  // The search row is built once and only shown/hidden. Re-creating the input on every keystroke is what
+  // dropped the keyboard after each letter.
+  viewBtn = h('button', { class: 'iconbtn', onclick: () => { saveSettings({ view: ctx.view === 'list' ? 'rails' : 'list' }); ctx.render(); } });
+  searchRow = h('div', { class: 'searchrow' },
+    h('div', { class: 'search' }, icon('search', 18), searchEl), viewBtn,
+    h('button', { class: 'iconbtn', 'aria-label': 'Scan a barcode', onclick: openScan }, icon('scan', 20)));
   $app.replaceChildren(
-    h('header', { class: 'top', id: 'top' }),
+    h('header', { class: 'top', id: 'top' }, h('div', { id: 'toprow' }), searchRow),
     h('div', { class: 'offline-bar' }, 'Offline. Changes will sync when you reconnect.'),
     h('main', { id: 'view' }),
     h('nav', { class: 'tabs', id: 'tabs', 'aria-label': 'Sections' }));
@@ -44,22 +50,22 @@ function mountShell() {
 }
 
 function renderHeader() {
-  const top = $('#top');
   const inStock = ctx.items.filter((i) => total(i) > 0).length;
   const onPantry = ctx.tab === 'pantry';
   const titles = { pantry: null, shopping: 'Shopping', family: 'Family', settings: 'Settings' };
   const title = onPantry
     ? h('div', { class: 'title' }, 'Kothar', h('span', { class: 'gu' }, 'કોઠાર'))
     : h('div', { class: 'title' }, titles[ctx.tab]);
-  const APP_V = 'v2.6';
+  const APP_V = 'v2.8';
   const warn = ctx.syncError ? `  ⚠ ${ctx.syncError}` : '';
   const sub = onPantry ? `${ctx.mode === 'demo' ? 'Demo, this phone only' : (ctx.household?.name || 'My pantry')} · ${ctx.items.length} item${ctx.items.length === 1 ? '' : 's'}${ctx.items.length ? `, ${inStock} in stock` : ''}${warn} · ${APP_V}` : (ctx.household?.name || '');
-  top.replaceChildren(
+  $('#toprow').replaceChildren(
     h('div', { class: 'titlerow' }, h('div', {}, title, h('div', { class: 'sub' }, sub)),
-      onPantry ? h('button', { class: 'iconbtn tint', 'aria-label': 'Add item', onclick: () => openForm() }, icon('plus', 20)) : null),
-    onPantry ? h('div', { class: 'searchrow' },
-      h('div', { class: 'search' }, icon('search', 18), searchEl),
-      h('button', { class: 'iconbtn', 'aria-label': 'Scan a barcode', onclick: openScan }, icon('scan', 20))) : null);
+      onPantry ? h('button', { class: 'iconbtn tint', 'aria-label': 'Add item', onclick: () => openForm() }, icon('plus', 20)) : null));
+  searchRow.hidden = !onPantry;
+  viewBtn.setAttribute('aria-label', ctx.view === 'list' ? 'Show thumbnails' : 'Show as list');
+  viewBtn.title = ctx.view === 'list' ? 'Thumbnails' : 'List';
+  viewBtn.replaceChildren(icon(ctx.view === 'list' ? 'pantry' : 'list', 20));
 }
 
 function renderTabs() {
@@ -102,6 +108,8 @@ function startDemo() {
   mountShell();
   ctx.store.watchItems((items) => { ctx.items = items; ctx.render(); });
   ctx.store.watchBarcodes((b) => { ctx.barcodes = b; });
+  ctx.store.watchWants((w) => { ctx.wants = w; ctx.render(); });
+  ctx.store.watchConfig((c) => { applyShared(c); ctx.render(); });
   ctx.signOut = () => {};
   ctx.render();
 }
@@ -121,7 +129,8 @@ async function startFirebase() {
 
   function stopHousehold() {
     unsubs.splice(0).forEach((u) => u());
-    Object.assign(ctx, { items: [], barcodes: {}, members: [], household: null, invite: null, store: null });
+    Object.assign(ctx, { items: [], barcodes: {}, members: [], wants: [], household: null, invite: null, store: null });
+    applyShared({});
     started = false; unsubs.membersOn = false;
   }
   function resetAll() {
@@ -223,7 +232,9 @@ async function startFirebase() {
         ctx.render();
       }),
       ctx.store.watchItems((items) => { ctx.items = items; ctx.render(); }),
-      ctx.store.watchBarcodes((b) => { ctx.barcodes = b; }));
+      ctx.store.watchBarcodes((b) => { ctx.barcodes = b; }),
+      ctx.store.watchWants((w) => { ctx.wants = w; ctx.render(); }),
+      ctx.store.watchConfig((c) => { applyShared(c); ctx.render(); }));
   }
 
   function syncInvite(hh) {
@@ -269,6 +280,7 @@ window.addEventListener('kothar-store-error', (e) => {
     : `Could not ${what}${code ? ' (' + code + ')' : ''}. It will retry when you are online.`);
 });
 loadSettings();
+if (ctx.prefs.startTab === 'shopping') ctx.tab = 'shopping';
 sheet.init();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch((e) => console.warn('service worker', e));
 

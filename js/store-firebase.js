@@ -21,6 +21,8 @@ export function createFirebaseStore(hid) {
   const items = collection(db, 'households', hid, 'items');
   const logs = collection(db, 'households', hid, 'logs');
   const barcodes = collection(db, 'households', hid, 'barcodes');
+  const wants = collection(db, 'households', hid, 'wants');
+  const configDoc = doc(db, 'households', hid, 'config', 'app');
   const uid = () => auth.currentUser?.uid ?? null;
   const stamp = (item) => ({ ...clean(item), updatedAt: Date.now(), updatedBy: uid() });
   const logDoc = (itemId, text) => ({ itemId, itemName: null, text, at: serverTimestamp(), by: uid() });
@@ -48,6 +50,18 @@ export function createFirebaseStore(hid) {
       }
     },
     deleteItem(id) { deleteDoc(doc(items, id)).catch(fail('save')); },
+    watchWants(cb) {
+      return onSnapshot(wants, (s) => cb(s.docs.map((d) => ({ ...d.data(), id: d.id })).filter((w) => typeof w.name === 'string')), fail('read shopping list'));
+    },
+    saveWant(w) { setDoc(doc(wants, w.id), { ...clean(w), updatedAt: Date.now(), updatedBy: uid() }).catch(fail('save shopping list')); },
+    deleteWant(id) { deleteDoc(doc(wants, id)).catch(fail('save shopping list')); },
+    deleteWants(ids) {
+      for (let i = 0; i < ids.length; i += BATCH) { const b = writeBatch(db); ids.slice(i, i + BATCH).forEach((id) => b.delete(doc(wants, id))); b.commit().catch(fail('save shopping list')); }
+    },
+    watchConfig(cb) {
+      return onSnapshot(configDoc, (s) => cb(s.exists() ? s.data() : {}), fail('read settings'));
+    },
+    saveConfig(cfg) { setDoc(configDoc, { ...clean(cfg), updatedAt: Date.now(), updatedBy: uid() }).catch(fail('save settings')); },
     saveBarcode(code, rec) {
       setDoc(doc(barcodes, code), { ...clean(rec), by: uid(), at: Date.now() }).catch(fail('save'));
     },

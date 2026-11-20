@@ -18,13 +18,13 @@ test('units: lb, kg, g convert to a base and back', () => {
   assert.equal(parseUnit('LBs'), 'lb');
 });
 
-test('bought: first pack opens when the pantry was empty; later packs stay sealed', () => {
+test('bought: every pack stays sealed (Kothar counts packs, it does not track which is open)', () => {
   let r = addPacks(rice(), 2, 10, 'lb', day(0));
   assert.equal(r.item.packs.length, 2);
-  assert.equal(openPack(r.item).label, '10 lb');
-  assert.equal(sealedCount(r.item), 1);
-  r = addPacks(r.item, 1, 4, 'lb', day(5));
+  assert.equal(openPack(r.item), null);
   assert.equal(sealedCount(r.item), 2);
+  r = addPacks(r.item, 1, 4, 'lb', day(5));
+  assert.equal(sealedCount(r.item), 3);
   assert.deepEqual(r.item.recent[0], { v: 4, u: 'lb' });
   assert.equal(r.item.packs.map((p) => p.label).join(), '10 lb,10 lb,4 lb');
 });
@@ -36,14 +36,25 @@ test('does not mutate its input', () => {
   assert.equal(JSON.stringify(it), copy);
 });
 
-test('Finished with one tap: finishes the open pack and opens the next sealed one', () => {
+test('Finished with one tap: removes one pack; the next pack is timed from that moment, nothing is marked opened', () => {
   let it = addPacks(rice(), 2, 10, 'lb', day(0)).item;
   const r = finishPack(it, null, day(40));
   assert.equal(r.item.packs.length, 1);
-  assert.equal(r.item.packs[0].openedAt, day(40));
+  assert.equal(r.item.packs[0].openedAt, null);
   assert.equal(r.item.lifespans.length, 1);
   assert.equal(r.item.lifespans[0].days, 40);
   assert.equal(r.item.onList, false);
+  const r2 = finishPack(r.item, null, day(65));          // second pack lasted from day 40 to day 65
+  assert.equal(r2.item.lifespans[1].days, 25);
+});
+
+test('imported packs: no sample for the first finish (unknown start), then the chain teaches', () => {
+  const imp = importPacks(rice(), [{ v: 10, u: 'lb', count: 3 }], day(0)).item;
+  assert.ok(imp.packs.every((p) => p.openedAt == null));
+  let r = finishPack(imp, null, day(20));
+  assert.equal((r.item.lifespans || []).length, 0);
+  r = finishPack(r.item, null, day(50));
+  assert.equal(r.item.lifespans[0].days, 30);
 });
 
 test('finishing the last pack puts the item on the list', () => {
@@ -93,10 +104,11 @@ test('Advanced: took some out / what is left keep exact amounts', () => {
 
 test('prediction works across pack sizes (rate, not days-per-pack)', () => {
   // The family eats 100 g/day. A 2 kg pack lasts 20 days, a 5 kg pack 50 days, a 10 lb pack ~45 days.
-  let it = rice(); it.dim = 'g';
+  let it = rice(); it.dim = 'g'; let t0 = 0;
   for (const [v, u, days] of [[2, 'kg', 20], [5, 'kg', 50], [2, 'kg', 20]]) {
-    it = addPacks(it, 1, v, u, 0).item;
-    it = finishPack(it, null, days * DAY).item;
+    it = addPacks(it, 1, v, u, t0).item;
+    t0 += days * DAY;
+    it = finishPack(it, null, t0).item;
   }
   const e = est(it);
   assert.equal(e.n, 3);
@@ -146,4 +158,18 @@ test('normalizeItem repairs v1-shaped documents and drops junk', async () => {
   assert.equal(v1.name, 'Toor Dal'); assert.deepEqual(v1.packs, []); assert.equal(v1.dim, 'g'); assert.equal(v1.cat, 'dry');
   assert.equal(normalizeItem({ id: 'b' }), null);
   assert.equal(normalizeItem({ id: 'c', name: 'X', packs: [{ amt: 'bad' }, { amt: 500, u: 'g', v: 500 }] }).packs.length, 1);
+});
+
+test('usePacks removes whole packs by size, open one first, one undoable result', async () => {
+  const { usePacks, packGroups, importPacks, makeItem } = await import('../js/stock.js');
+  const t = 1_700_000_000_000;
+  let it = makeItem({ name: 'Rice', cat: 'grains', dsize: { v: 10, u: 'lb' } }, t);
+  it = importPacks(it, [{ v: 10, u: 'lb', count: 2 }, { v: 4, u: 'lb', count: 1 }], t).item;
+  assert.deepEqual(packGroups(it).map((g) => [g.label, g.count]), [['4 lb', 1], ['10 lb', 2]]);
+  const r = usePacks(it, [{ label: '10 lb', count: 1 }], t + 5 * 86400000);
+  assert.equal(r.item.packs.filter((p) => p.label === '10 lb').length, 1);
+  assert.equal(it.packs.length, 3, 'original untouched');
+  const r2 = usePacks(r.item, [{ label: '10 lb', count: 5 }, { label: '4 lb', count: 1 }], t + 9 * 86400000);
+  assert.equal(r2.item.packs.length, 0); assert.equal(r2.item.onList, true);
+  assert.equal(usePacks(it, [{ label: '99 kg', count: 1 }], t), null);
 });

@@ -24,6 +24,15 @@ export const CONFIG = {
   outlierBand: 0.35,   // drop samples whose rate is >35% from the median (once there are 4+)
   snoozeMin: 3, snoozeFrac: 0.25,
 };
+/** The knobs the household can change in Settings (shared). Everything else in CONFIG is internal. */
+export const TUNE_DEFAULTS = { minSamples: CONFIG.minSamples, leadMin: CONFIG.leadMin, leadMax: CONFIG.leadMax, snoozeMin: CONFIG.snoozeMin };
+export function applyTune(t = {}) {
+  const n = (x, lo, hi, d) => (Number.isFinite(+x) && +x >= lo && +x <= hi ? Math.round(+x) : d);
+  const m = { ...TUNE_DEFAULTS };
+  m.minSamples = n(t.minSamples, 1, 10, m.minSamples); m.leadMin = n(t.leadMin, 1, 30, m.leadMin);
+  m.leadMax = Math.max(m.leadMin, n(t.leadMax, 1, 60, m.leadMax)); m.snoozeMin = n(t.snoozeMin, 1, 30, m.snoozeMin);
+  Object.assign(CONFIG, m);
+}
 
 const rid = () => 'p' + Math.random().toString(36).slice(2, 8);
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -81,8 +90,8 @@ export const toBuy = (items) =>
 
 export function mkPack(v, u, now, opts = {}) {
   const a = toBase(v, u);
-  return { id: rid(), amt: a, left: a, v: +v, u, label: packLabel(v, u),
-    openedAt: opts.open ? now : null, ...(opts.noSample ? { noSample: true } : {}) };
+  return { id: rid(), amt: a, left: a, v: +v, u, label: packLabel(v, u), boughtAt: now,
+    openedAt: opts.open ? now : null, ...(opts.noSample ? { noSample: true } : {}), ...(opts.fromImport ? { fromImport: true } : {}) };
 }
 
 /** A new item from the form / dictionary. `dsize` is the usual pack size shown as a first suggestion. */
@@ -102,12 +111,11 @@ const note = (it, extra) => (it.packs.length ? ` ${fmt(total(it), it.dim)} left.
 
 /* ───────────────────────────── actions (all return { item, text, msg } ) ───────────────────────────── */
 
-/** "Bought": `count` packs of size v+u. If the pantry was empty the first one is opened right away. */
+/** "Bought": `count` packs of size v+u. Packs stay sealed: Kothar counts packs, it does not track which one is open. */
 export function addPacks(it0, count, v, u, now, opts = {}) {
   if (!(+v > 0) || count < 1) return null;
-  const it = clone(it0), wasEmpty = total(it) <= 0;
+  const it = clone(it0);
   for (let k = 0; k < count; k++) it.packs.push(mkPack(v, u, now, opts));
-  if (wasEmpty) { const f = it.packs.find((p) => p.openedAt == null); if (f) f.openedAt = now; }
   it.onList = false; it.everStocked = true;
   it.recent = [{ v: +v, u }, ...(it.recent || []).filter((r) => !(+r.v === +v && r.u === u))].slice(0, 4);
   touch(it, now);
@@ -115,20 +123,19 @@ export function addPacks(it0, count, v, u, now, opts = {}) {
   return { item: it, text: `Bought ${what}`, msg: `${it.name}: added ${what}. ${fmt(total(it), it.dim)} in stock.` };
 }
 
-/** Import: existing stock described as [{v,u,count,opened?}]. The open pack's start date is unknown,
- *  so it is flagged noSample and never teaches the predictor. */
+/** Import: existing stock described as [{v,u,count,opened?}]. Packs stay sealed unless the list says one is opened
+ *  (e.g. "tutelu"); that one's start date is unknown, so it is flagged noSample and never teaches the predictor. */
 export function importPacks(it0, specs, now) {
   const it = clone(it0);
   let openedOne = false;
   for (const s of specs) {
     for (let k = 0; k < Math.max(1, s.count || 1); k++) {
       const wantOpen = s.opened && k === 0;
-      const p = mkPack(s.v, s.u, now, { open: wantOpen, noSample: wantOpen });
+      const p = mkPack(s.v, s.u, now, { open: wantOpen, noSample: wantOpen, fromImport: true });
       if (wantOpen) openedOne = true;
       it.packs.push(p);
     }
   }
-  if (!openedOne && it.packs.length && !openPack(it)) { it.packs[0].openedAt = now; it.packs[0].noSample = true; }
   if (it.packs.length) it.everStocked = true;
   const first = specs[0];
   if (first) it.recent = [...new Map([...specs, ...(it.recent || [])].map((r) => [`${+r.v}${r.u}`, { v: +r.v, u: r.u }])).values()].slice(0, 4);
@@ -138,7 +145,6 @@ export function importPacks(it0, specs, now) {
 
 /**
  * "Finished": the one-tap default. With no pack given it finishes the open pack (or the first one).
- * If sealed packs remain, the next one is opened automatically.
  */
 export function finishPack(it0, pid, now) {
   const it = clone(it0);
@@ -146,19 +152,56 @@ export function finishPack(it0, pid, now) {
   if (i < 0 || !it.packs[i]) return null;
   const p = it.packs[i];
   let how = '';
-  if (p.openedAt != null && !p.noSample) {
-    const d = (now - p.openedAt) / DAY;
+  // When did this pack start being used? Its opened date if it has one (partial use), otherwise the later of
+  // "bought" and "the previous pack finished". Imported packs have no trustworthy purchase date.
+  const start = p.noSample ? null : p.openedAt != null ? p.openedAt
+    : p.fromImport ? (it.lastFinishAt ?? null)
+      : (Number.isFinite(Math.max(p.boughtAt ?? -Infinity, it.lastFinishAt ?? -Infinity)) ? Math.max(p.boughtAt ?? -Infinity, it.lastFinishAt ?? -Infinity) : null);
+  if (start != null) {
+    const d = (now - start) / DAY;
     if (d >= CONFIG.minDays) {
       it.lifespans = [...(it.lifespans || []), { amt: p.amt, days: +d.toFixed(1), at: now }].slice(-CONFIG.keep);
       how = ` after ${Math.round(d)} days`;
     } else how = ' (too quick to count)';
   }
+  it.lastFinishAt = now;
   it.packs.splice(i, 1);
-  if (it.packs.length && !openPack(it)) it.packs[0].openedAt = now;
   if (!it.packs.length) it.onList = true;
   touch(it, now);
   return { item: it, text: `Finished the ${p.label} pack${how}` + (it.packs.length ? '' : ', now out'),
     msg: `${it.name}: finished the ${p.label} pack.` + note(it) };
+}
+
+/** Pack sizes currently in stock, e.g. [{label:'10 lb', count:2, v:10, u:'lb', amt}, ...] (open pack counted). */
+export function packGroups(it) {
+  const g = new Map();
+  for (const p of it.packs) {
+    const e = g.get(p.label) || { label: p.label, count: 0, amt: p.amt, opened: 0 };
+    e.count++; if (p.openedAt != null) e.opened++; g.set(p.label, e);
+  }
+  return [...g.values()].sort((a, b) => a.amt - b.amt);
+}
+
+/**
+ * "Used": whole packs taken from the pantry, by size. picks = [{label, count}].
+ * The open pack of a size goes first. Returns null if nothing could be taken.
+ */
+export function usePacks(it0, picks, now) {
+  let it = it0, taken = [];
+  for (const { label, count } of picks) {
+    let n = 0;
+    for (let k = 0; k < count; k++) {
+      const cand = it.packs.filter((p) => p.label === label).sort((a, b) => (b.openedAt != null) - (a.openedAt != null))[0];
+      if (!cand) break;
+      const r = finishPack(it, cand.id, now);
+      if (!r) break;
+      it = r.item; n++;
+    }
+    if (n) taken.push(`${n} × ${label}`);
+  }
+  if (!taken.length) return null;
+  const list = taken.join(' + ');
+  return { item: it, text: `Used ${list}`, msg: `${it.name}: used ${list}.` + (it.packs.length ? ` ${fmt(total(it), it.dim)} left.` : ' Now out, added to your list.') };
 }
 
 /** Advanced: took `amt` (base units) out of one pack. Taking everything counts as Finished. */

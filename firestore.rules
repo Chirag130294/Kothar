@@ -144,6 +144,22 @@ service cloud.firestore {
           && request.resource.data.itemId.size() <= 100;
       }
 
+      // One-time shopping items ("For this trip"). Any approved member can add, tick off or remove them.
+      match /wants/{wantId} {
+        allow read, delete: if isApproved(hid);
+        allow create, update: if isApproved(hid)
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 80
+          && (!('note' in request.resource.data) || (request.resource.data.note is string && request.resource.data.note.size() <= 120));
+      }
+
+      // Shared settings (categories, prediction tuning): everyone reads, only the admin changes.
+      match /config/{docId} {
+        allow read: if isApproved(hid);
+        allow create, update, delete: if isAdmin(hid) && docId == 'app';
+      }
+
       // Append-only audit trail (bought / finished / import / undo). itemId and itemName may be null (imports).
       match /logs/{logId} {
         allow read: if isApproved(hid);

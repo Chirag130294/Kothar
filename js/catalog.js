@@ -20,11 +20,19 @@ export const CATS = [
   { id: 'dry', name: 'Dry Fruits & More', gu: 'સૂકો મેવો અને અન્ય' },
   { id: 'mixes', name: 'Mixes & Ready-made', gu: 'મિક્સ અને તૈયાર' },
 ];
+export const DEFAULT_CATS = CATS.map((x) => ({ ...x }));
+/** Replace the category list in place (shared settings). Bad input falls back to the defaults. */
+export function setCats(list) {
+  const ok = Array.isArray(list) ? list.filter((x) => x && typeof x.id === 'string' && /^[a-z0-9_-]{1,24}$/i.test(x.id) && typeof x.name === 'string' && x.name.trim())
+    .map((x) => ({ id: x.id, name: x.name.trim().slice(0, 40), gu: typeof x.gu === 'string' ? x.gu.trim().slice(0, 40) : '' })) : [];
+  const seen = new Set(), uniq = ok.filter((x) => !seen.has(x.id) && seen.add(x.id));
+  CATS.splice(0, CATS.length, ...(uniq.length ? uniq : DEFAULT_CATS.map((x) => ({ ...x }))));
+}
 export const RAW = [
   ['Turmeric (Haldar)', 'હળદર', 'masala', 'shaker', '#E8A317', 500, 'g', 'haldi|haldar|haddar'],
   ['Red Chilli Powder', 'લાલ મરચું', 'masala', 'shaker', '#C0261B', 500, 'g', 'mirch|marcha|marchu|lal marchu|chilli|chilli powder|chili powder|red chilli|lal mirch'],
   ['Coriander-Cumin Powder (Dhana Jeeru)', 'ધાણાજીરું', 'masala', 'shaker', '#B08D4F', 500, 'g', 'dhana jeeru|dhanajeeru|dhanajiru|dhana jiru|dhaniya'],
-  ['Garam Masala', 'ગરમ મસાલો', 'masala', 'shaker', '#7A3E1D', 200, 'g', ''],
+  ['Garam Masala', 'ગરમ મસાલો', 'masala', 'shaker', '#7A3E1D', 200, 'g', 'garamasala|garam masala|garm masala'],
   ['Mustard Seeds (Rai)', 'રાઈ', 'masala', 'shaker', '#3B2A20', 500, 'g', 'rai|sarso|mustard'],
   ['Cumin Seeds (Jeera)', 'જીરું', 'masala', 'shaker', '#8C7A4B', 500, 'g', 'jeera|jira|jiru|cumin'],
   ['Asafoetida (Hing)', 'હિંગ', 'masala', 'shaker', '#B8A06A', 100, 'g', 'hing'],

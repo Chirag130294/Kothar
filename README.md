@@ -37,10 +37,16 @@ tests/               importer + stock tests
 - `households/{hid}`, `members/{uid}`, `invites/{token}`, `users/{uid}`: unchanged access model (admin approves devices).
 - `households/{hid}/items/{id}`: `{name, gu, cat, form, color, keys[], dim, dsize, packs[], lifespans[], onList, everStocked, snoozeUntil, photo, ...}`
   - pack: `{id, amt, left, v, u, label, openedAt|null}`; amounts stored in g / ml / pc, display keeps the unit it was bought in.
+- `households/{hid}/wants/{id}`: one-time shopping items `{name, note, done}` ("For this trip").
+- `households/{hid}/config/app`: shared settings `{categories[], tune{minSamples, leadMin, leadMax, snoozeMin}}`; admin writes, everyone reads.
 - `households/{hid}/barcodes/{code}`: `{itemId, v, u, by, at}`, shared by the family.
 - `households/{hid}/logs/{id}`: append-only history.
 
 ## How it works
+- **Views**: thumbnails (Netflix-style rails) or a compact list/table with a collapsible band per category (toggle next to the search box). In list view, swipe a row left to take a pack out: one pack size removes one pack at once (Undo offered); several sizes ask which size and how many. The "Used" button on each row does the same without swiping.
+- **Packs stay sealed**: Kothar counts packs; it no longer marks one as "open". Each pack is timed from when it was bought, or from when the previous pack of that item finished.
+- **Shopping**: "To buy" (out of stock), "For this trip" (one-time items; "Track in pantry" turns one into a tracked item), "Suggested for you" (predictions).
+- **Settings**: per phone (units, theme, accent colour, thumbnail size, Gujarati on/off, swipe on/off, start screen) and shared (categories, prediction tuning).
 - **Whole packs by default**: one tap "Finished" / "Bought". "Took some out" and "What's left" live under Advanced.
 - **First-time setup**: paste or type, Excel/CSV, photo, or a starter list, always followed by a review screen. Section headings in a note (e.g. "Box") steer matching.
 - **Prediction**: each finished pack gives (amount, days) → a consumption rate, recency-weighted, outliers trimmed once there are 4+ samples. Days left = stock ÷ rate − time elapsed. Suggested once the item is within 4–14 days of running out and at least 2 packs have been finished. Packs finished in under 2 days are ignored as mis-taps; imported already-open packs never teach the predictor.

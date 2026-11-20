@@ -6,6 +6,7 @@ import { h, sheet, icon } from './dom.js';
 import { railTile } from './thumb.js';
 import { openItem } from './sheets.js';
 import { openForm } from './form.js';
+import { listTable } from './listview.js';
 
 const rank = { out: 0, low: 1, in: 2, new: 3 };
 const order = (a, b) => rank[stat(a)] - rank[stat(b)] || a.name.localeCompare(b.name);
@@ -39,6 +40,15 @@ export function pantryView() {
         h('button', { class: 'btn primary', onclick: () => openForm(null, ctx.query) }, `Add "${ctx.query}" as a new item`)));
       return page;
     }
+  }
+
+  if (ctx.view === 'list') {
+    const known = new Set(CATS.map((c) => c.id));
+    const groups = CATS.map((c) => ({ id: c.id, name: c.name, gu: c.gu, items: shown.filter((i) => i.cat === c.id).sort(order) }));
+    const stray = shown.filter((i) => !known.has(i.cat)).sort(order);
+    if (stray.length) groups.push({ id: 'other', name: 'Other', gu: '', items: stray });
+    page.append(listTable(groups.filter((g) => g.items.length), { searching: !!q }));
+    return page;
   }
 
   for (const cat of CATS) {

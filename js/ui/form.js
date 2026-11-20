@@ -25,7 +25,7 @@ function readPhoto(file) {
   });
 }
 
-export function openForm(item = null, prefillName = '') {
+export function openForm(item = null, prefillName = '', opts = {}) {
   const editing = !!item;
   const f = editing
     ? { name: item.name, gu: item.gu, cat: item.cat, form: item.form, color: item.color, size: item.dsize.v, unit: item.dsize.u, photo: item.photo, keys: item.keys || [] }
@@ -105,6 +105,7 @@ export function openForm(item = null, prefillName = '') {
         if (dup) { toast(`${dup.name} is already in your pantry.`); return; }
         const it = makeItem({ name: nm, gu: f.gu, cat: f.cat, form: f.form, color: f.color, keys, dsize: { v: f.size, u: f.unit }, photo: f.photo }, now());
         ctx.store.saveItem(it, `Added ${nm}`);
+        if (opts.onSaved) opts.onSaved(it);
         openBought(it);            // "How much do you have?" straight away
       }
     } }, editing ? 'Save' : 'Add and set stock');

@@ -2,14 +2,14 @@
 // Firestore's own offline persistence, so this file never touches it. Cross-origin requests (Firebase,
 // the optional scanner/Excel/photo libraries, Open Food Facts) are left alone.
 // Bump VERSION whenever you deploy new code so phones pick it up.
-const VERSION = 'kothar-v2.6';
+const VERSION = 'kothar-v2.8';
 
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/styles.css',
   'js/app.js', 'js/ctx.js', 'js/config.js', 'js/catalog.js', 'js/units.js', 'js/stock.js', 'js/importer.js',
   'js/store-local.js', 'js/store-firebase.js', 'js/fb.js', 'js/firebase-init.js', 'js/household.js',
   'js/ui/dom.js', 'js/ui/thumb.js', 'js/ui/pantry.js', 'js/ui/sheets.js', 'js/ui/form.js',
-  'js/ui/shop.js', 'js/ui/family.js', 'js/ui/settings.js', 'js/ui/setup.js', 'js/ui/scan.js',
+  'js/ui/listview.js', 'js/ui/shop.js', 'js/ui/family.js', 'js/ui/settings.js', 'js/ui/setup.js', 'js/ui/scan.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
 ];
 
