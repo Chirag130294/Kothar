@@ -22,7 +22,7 @@ export const CATS = [
 ];
 export const RAW = [
   ['Turmeric (Haldar)', 'હળદર', 'masala', 'shaker', '#E8A317', 500, 'g', 'haldi|haldar|haddar'],
-  ['Red Chilli Powder', 'લાલ મરચું', 'masala', 'shaker', '#C0261B', 500, 'g', 'mirch|marcha|marchu|lal marchu|chilli'],
+  ['Red Chilli Powder', 'લાલ મરચું', 'masala', 'shaker', '#C0261B', 500, 'g', 'mirch|marcha|marchu|lal marchu|chilli|chilli powder|chili powder|red chilli|lal mirch'],
   ['Coriander-Cumin Powder (Dhana Jeeru)', 'ધાણાજીરું', 'masala', 'shaker', '#B08D4F', 500, 'g', 'dhana jeeru|dhanajeeru|dhanajiru|dhana jiru|dhaniya'],
   ['Garam Masala', 'ગરમ મસાલો', 'masala', 'shaker', '#7A3E1D', 200, 'g', ''],
   ['Mustard Seeds (Rai)', 'રાઈ', 'masala', 'shaker', '#3B2A20', 500, 'g', 'rai|sarso|mustard'],

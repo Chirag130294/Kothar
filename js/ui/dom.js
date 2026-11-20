@@ -10,12 +10,19 @@ for (const m of ['append', 'prepend', 'replaceChildren']) {
   Element.prototype[m] = function (...args) { return orig.apply(this, args.filter((x) => x != null && x !== false)); };
 }
 
+// Any error inside a click/input handler used to vanish silently ("I tapped and nothing happened").
+// Now it is shown on screen so it can be reported and fixed.
+function safeHandler(fn) {
+  const show = (e) => { console.error(e); try { toast(`Error: ${e && e.message ? e.message : e}`); } catch { /* ignore */ } };
+  return function (ev) { try { const r = fn.call(this, ev); if (r && typeof r.catch === 'function') r.catch(show); return r; } catch (e) { show(e); } };
+}
+
 export function h(tag, props, ...kids) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(props || {})) {
     if (k === 'class') el.className = v;
     else if (k === 'style' && typeof v === 'string') el.style.cssText = v;
-    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), safeHandler(v));
     else if (v === true) el.setAttribute(k, '');
     else if (v !== false && v != null) el.setAttribute(k, v);
   }
@@ -53,6 +60,10 @@ export function toast(msg, undo) {
   clearTimeout(toastT);
   t.replaceChildren(...[h('span', {}, msg), undo ? h('button', { onclick: () => { t.hidden = true; undo(); } }, 'Undo') : null].filter(Boolean));
   t.hidden = false;
+  // A modal <dialog> makes everything outside it unclickable and hides it. While a sheet is open the toast
+  // lives inside the dialog (so it is visible and Undo works); otherwise it sits in the page.
+  const d = $('#sheet'), home = d.open ? d : document.body;
+  if (t.parentNode !== home) home.append(t);
   toastT = setTimeout(() => { t.hidden = true; }, 6500);
 }
 
@@ -66,7 +77,7 @@ const runClosers = () => { const c = closers; closers = []; c.forEach((f) => { t
 export const sheet = {
   /** Run `fn` when this sheet closes or is replaced (stop the camera, etc.). */
   onClose(fn) { closers.push(fn); },
-  init() { $('#sheet').addEventListener('close', () => { ctx.sheetLive = null; runClosers(); });
+  init() { $('#sheet').addEventListener('close', () => { ctx.sheetLive = null; const t = $('#toast'); if (t && t.parentNode !== document.body) document.body.append(t); runClosers(); });
     $('#sheet').addEventListener('click', (e) => { if (e.target === e.currentTarget) sheet.close(); }); },
   open(node, live) {
     const d = $('#sheet');

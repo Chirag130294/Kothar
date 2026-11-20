@@ -12,7 +12,7 @@
  * Accepting a suggestion only puts the item on the list; it never marks anything empty, so the
  * app never learns from its own guesses.
  */
-import { toBase, packLabel, dimOf, fmt } from './units.js';
+import { toBase, packLabel, dimOf, fmt, U } from './units.js';
 
 export const DAY = 864e5;
 export const CONFIG = {
@@ -194,4 +194,29 @@ export function snooze(it0, now) {
   const it = clone(it0), e = est(it);
   it.snoozeUntil = now + Math.max(CONFIG.snoozeMin, (e ? e.cycle : 0) * CONFIG.snoozeFrac) * DAY;
   return { item: it, text: 'Dismissed suggestion', msg: null };
+}
+
+/** Make any stored document safe to draw. Items written by the first version of the app (or by hand in the
+ *  Firebase console) lack packs/dsize/etc.; without this one such document would break every screen. */
+const CAT_IDS = ['masala', 'grains', 'flours', 'oil', 'dry', 'mixes'];
+export function normalizeItem(raw) {
+  if (!raw || typeof raw.name !== 'string' || !raw.name.trim()) return null;
+  const num = (x, d) => (typeof x === 'number' && Number.isFinite(x) ? x : d);
+  const arr = (x) => (Array.isArray(x) ? x : []);
+  const u = raw.dsize && U[raw.dsize.u] ? raw.dsize.u : 'kg';
+  const dv = raw.dsize ? num(raw.dsize.v, 0) : 0;
+  const dsize = { v: dv > 0 ? dv : 1, u };
+  const packs = arr(raw.packs).filter((p) => p && typeof p === 'object' && num(p.amt, -1) >= 0 && U[p.u])
+    .map((p) => ({ ...p, left: num(p.left, p.amt), v: num(p.v, 1), openedAt: p.openedAt == null ? null : num(p.openedAt, null) }));
+  const t = num(raw.createdAt, 0);
+  return {
+    ...raw,
+    id: String(raw.id), name: raw.name.trim(), gu: typeof raw.gu === 'string' ? raw.gu : '',
+    cat: CAT_IDS.includes(raw.cat) ? raw.cat : 'dry', form: typeof raw.form === 'string' ? raw.form : 'jar',
+    color: typeof raw.color === 'string' ? raw.color : '#B08D4F', keys: arr(raw.keys).filter((k) => typeof k === 'string'),
+    dsize, dim: dimOf(dsize.u), packs, recent: arr(raw.recent), lifespans: arr(raw.lifespans),
+    onList: raw.onList === true, everStocked: raw.everStocked === true || packs.length > 0,
+    snoozeUntil: num(raw.snoozeUntil, null), photo: typeof raw.photo === 'string' ? raw.photo : null,
+    tAt: num(raw.tAt, t), createdAt: t,
+  };
 }

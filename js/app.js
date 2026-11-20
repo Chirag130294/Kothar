@@ -51,7 +51,9 @@ function renderHeader() {
   const title = onPantry
     ? h('div', { class: 'title' }, 'Kothar', h('span', { class: 'gu' }, 'કોઠાર'))
     : h('div', { class: 'title' }, titles[ctx.tab]);
-  const sub = onPantry ? `${ctx.mode === 'demo' ? 'Demo, this phone only' : (ctx.household?.name || 'My pantry')} · ${ctx.items.length} item${ctx.items.length === 1 ? '' : 's'}${ctx.items.length ? `, ${inStock} in stock` : ''}` : (ctx.household?.name || '');
+  const APP_V = 'v2.6';
+  const warn = ctx.syncError ? `  ⚠ ${ctx.syncError}` : '';
+  const sub = onPantry ? `${ctx.mode === 'demo' ? 'Demo, this phone only' : (ctx.household?.name || 'My pantry')} · ${ctx.items.length} item${ctx.items.length === 1 ? '' : 's'}${ctx.items.length ? `, ${inStock} in stock` : ''}${warn} · ${APP_V}` : (ctx.household?.name || '');
   top.replaceChildren(
     h('div', { class: 'titlerow' }, h('div', {}, title, h('div', { class: 'sub' }, sub)),
       onPantry ? h('button', { class: 'iconbtn tint', 'aria-label': 'Add item', onclick: () => openForm() }, icon('plus', 20)) : null),
@@ -76,12 +78,18 @@ ctx.render = function render() {
   if (!shellUp) return;
   if (ctx.tab === 'family' && !ctx.isAdmin) ctx.tab = 'pantry';
   const y = window.scrollY;
-  const view = { pantry: pantryView, shopping: shoppingView, family: familyView, settings: settingsView }[ctx.tab]();
-  renderHeader();
+  // Never let one broken screen take the tabs down with it: show the error on screen instead.
+  const safe = (fn) => { try { return fn(); } catch (e) {
+    console.error(e);
+    return h('div', { class: 'card stack', style: 'margin:16px var(--gut)' }, h('b', {}, 'Something went wrong on this screen'),
+      h('div', { class: 'muted small', style: 'word-break:break-word' }, `${e.name}: ${e.message}`),
+      h('button', { class: 'btn', onclick: () => location.reload() }, 'Reload')); } };
+  const view = safe({ pantry: pantryView, shopping: shoppingView, family: familyView, settings: settingsView }[ctx.tab]);
+  try { renderHeader(); } catch (e) { console.error(e); }
   $('#view').replaceChildren(view);
-  renderTabs();
+  try { renderTabs(); } catch (e) { console.error(e); }
   window.scrollTo(0, y);
-  sheet.refresh();
+  try { sheet.refresh(); } catch (e) { console.error(e); }
 };
 
 /* ───────────────────────────── demo mode ───────────────────────────── */
@@ -253,6 +261,13 @@ async function startFirebase() {
 const setOffline = () => document.body.classList.toggle('offline', !navigator.onLine);
 window.addEventListener('online', setOffline); window.addEventListener('offline', setOffline); setOffline();
 
+window.addEventListener('kothar-store-error', (e) => {
+  const { code, what } = e.detail || {};
+  ctx.syncError = `${what}: ${code || 'error'}`; ctx.render();
+  toast(code === 'permission-denied'
+    ? `Not allowed to ${what}. Publish the latest firestore.rules in Firebase, and check this phone is approved.`
+    : `Could not ${what}${code ? ' (' + code + ')' : ''}. It will retry when you are online.`);
+});
 loadSettings();
 sheet.init();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch((e) => console.warn('service worker', e));

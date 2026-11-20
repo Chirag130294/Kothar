@@ -2,7 +2,7 @@
 // Firestore's own offline persistence, so this file never touches it. Cross-origin requests (Firebase,
 // the optional scanner/Excel/photo libraries, Open Food Facts) are left alone.
 // Bump VERSION whenever you deploy new code so phones pick it up.
-const VERSION = 'kothar-v2.3';
+const VERSION = 'kothar-v2.6';
 
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/styles.css',
@@ -37,11 +37,10 @@ self.addEventListener('fetch', (event) => {
         .catch(() => caches.match('index.html').then((r) => r || caches.match('./'))));
     return;
   }
-  // Everything else on this site: instant from cache, refreshed in the background.
+  // Everything else on this site: network first so a new deploy is used straight away (a stale mix of old
+  // and new files is what makes buttons silently stop working), cached copy only when offline.
   event.respondWith(
-    caches.open(VERSION).then(async (cache) => {
-      const cached = await cache.match(req);
-      const refresh = fetch(req).then((res) => { if (res.ok) cache.put(req, res.clone()); return res; }).catch(() => cached);
-      return cached || refresh;
-    }));
+    caches.open(VERSION).then((cache) =>
+      fetch(req).then((res) => { if (res.ok) cache.put(req, res.clone()); return res; })
+        .catch(() => cache.match(req).then((r) => r || Response.error()))));
 });

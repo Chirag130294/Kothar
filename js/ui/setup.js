@@ -20,7 +20,7 @@ export function openSetup() {
   const method = (ic, title, sub, onclick) => h('button', { class: 'method', onclick }, h('span', { class: 'mi' }, icon(ic, 22)), h('span', {}, h('b', {}, title), h('span', {}, sub)));
   sheet.open(h('div', { class: 'stack' },
     h('div', { class: 'shead' }, h('div', { class: 'grow' }, h('h2', {}, 'Set up your pantry'), h('div', { class: 'muted small' }, 'Pick whatever is easiest. You will check everything before it is saved.')), close()),
-    method('paste', 'Paste or type a list', 'Like "Toor dal 10 lb 1" on each line', openPaste),
+    method('paste', 'Paste or type a list', 'Like "Toor dal 10 lb 1" on each line', () => openPaste()),
     method('file', 'Excel or CSV file', 'Columns can be Item, Size, Unit, Count, or just a list', pickFile),
     method('camera', 'Photo or screenshot', 'Best with typed text. Handwriting may need fixing.', pickPhoto),
     method('sparkle', 'Start from a typical pantry', 'About 40 common items with Gujarati names. Add stock later.', () => review(starterRows(), 'starter'))));
@@ -29,6 +29,7 @@ export function openSetup() {
 /* ───────────── step 1: get text ───────────── */
 
 export function openPaste(initial = '') {
+  if (typeof initial !== 'string') initial = '';
   const ta = h('textarea', { placeholder: EXAMPLE, 'aria-label': 'Your pantry list', spellcheck: 'false' });
   ta.value = initial;
   sheet.open(h('div', { class: 'stack' },

@@ -139,3 +139,11 @@ test('outliers (the month the guests came) are ignored once there are 4+ samples
   const e = est(it);
   assert.equal(e.n, 3);
 });
+
+test('normalizeItem repairs v1-shaped documents and drops junk', async () => {
+  const { normalizeItem } = await import('../js/stock.js');
+  const v1 = normalizeItem({ id: 'a', name: ' Toor Dal ', weight: '5kg', status: 'have' });
+  assert.equal(v1.name, 'Toor Dal'); assert.deepEqual(v1.packs, []); assert.equal(v1.dim, 'g'); assert.equal(v1.cat, 'dry');
+  assert.equal(normalizeItem({ id: 'b' }), null);
+  assert.equal(normalizeItem({ id: 'c', name: 'X', packs: [{ amt: 'bad' }, { amt: 500, u: 'g', v: 500 }] }).packs.length, 1);
+});
