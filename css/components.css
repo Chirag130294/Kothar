@@ -1,0 +1,48 @@
+/* Shared components: buttons, fields, segmented control, chips, cards, pills, sheet chrome, toast. */
+.btn { min-height: var(--tap); padding: 0 var(--s4); border: 0; border-radius: var(--r-md); background: var(--fill); color: var(--text); font-weight: var(--fw-s); font-size: var(--fs-body); transition: background var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease); }
+.btn:active { background: var(--hairline-2); }
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.primary:active { background: var(--accent-press); }
+.btn.danger { color: var(--bad); }
+.btn.link { background: none; color: var(--text-2); text-decoration: underline; }
+.btn.sm { padding: 0 var(--s3); font-size: var(--fs-meta); }
+.btn:disabled { opacity: .45; cursor: default; }
+
+input[type=text], input[type=number], input[type=search], textarea, select {
+  width: 100%; min-height: var(--tap); padding: 0 var(--s3); font: inherit; font-size: 16px; color: var(--text);
+  background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-md); appearance: none; -webkit-appearance: none;
+}
+select { padding-right: 32px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+textarea { padding: var(--s3); min-height: 160px; resize: vertical; line-height: 1.5; }
+input::placeholder, textarea::placeholder { color: var(--text-3); }
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+label.f { display: flex; flex-direction: column; gap: 6px; font-size: var(--fs-meta); font-weight: var(--fw-m); color: var(--text-2); }
+
+.seg { display: flex; padding: 2px; gap: 2px; border-radius: 10px; background: var(--fill); }
+.seg button { flex: 1; min-height: 40px; padding: 0 var(--s3); border: 0; border-radius: 8px; background: none; color: var(--text-2); font-weight: var(--fw-m); font-size: var(--fs-body); transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+.seg button[aria-pressed=true] { background: var(--surface); color: var(--text); font-weight: var(--fw-s); box-shadow: 0 0 0 1px var(--hairline); }
+.chips { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.chip { min-height: 40px; padding: 0 14px; border: 1px solid transparent; border-radius: 20px; background: var(--fill); color: var(--text); font-size: var(--fs-meta); font-weight: var(--fw-m); transition: background var(--t-fast) var(--ease); }
+.chip[aria-pressed=true] { background: var(--accent-tint); border-color: var(--accent); color: var(--accent); font-weight: var(--fw-s); }
+
+.card { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-lg); padding: var(--s4); }
+.list { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-lg); padding: 0 var(--s4); }
+.list > * + * { border-top: 1px solid var(--hairline); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; font-size: var(--fs-sm); font-weight: var(--fw-m); background: var(--fill); color: var(--text-2); }
+.pill i { width: 6px; height: 6px; border-radius: 3px; background: currentColor; }
+.pill.low { background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--warn); }
+.pill.out { background: color-mix(in srgb, var(--bad) 12%, transparent); color: var(--bad); }
+.pill.good { background: color-mix(in srgb, var(--ok) 12%, transparent); color: var(--ok); }
+progress { width: 100%; height: 6px; accent-color: var(--accent); }
+
+/* sheets */
+dialog.sheet { width: min(100vw, 560px); max-width: 560px; max-height: calc(100dvh - 40px); margin: auto auto 0; padding: 0; border: 0; border-radius: var(--r-sheet) var(--r-sheet) 0 0; background: var(--bg); color: var(--text); box-shadow: 0 -1px 0 var(--hairline); overflow: hidden; animation: up var(--t-sheet) var(--ease); }
+dialog.sheet::backdrop { background: var(--scrim); animation: fade var(--t-sheet) ease-out; }
+@keyframes up { from { transform: translateY(24px); opacity: 0; } } @keyframes fade { from { opacity: 0; } }
+#sbody { max-height: calc(100dvh - 40px); overflow-y: auto; padding: var(--s2) var(--gut) calc(var(--s5) + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: var(--s4); }
+#sbody > * { flex: none; }
+.grab { align-self: center; width: 36px; height: 4px; border-radius: 2px; background: var(--hairline-2); margin-bottom: var(--s1); }
+
+/* toast: inverse pill above the tab bar */
+.toast { position: fixed; inset: auto var(--gut) calc(76px + env(safe-area-inset-bottom, 0px)) var(--gut); border: 0; overflow: visible; height: auto; z-index: 60; max-width: 528px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: var(--s3) var(--s4); color: var(--inverse-fg); background: var(--inverse-bg); border-radius: var(--r-md); font-size: var(--fs-meta); animation: up var(--t-sheet) var(--ease); }
+.toast button { border: 0; background: none; font-weight: var(--fw-s); color: inherit; text-decoration: underline; min-height: var(--tap); margin: -12px -8px -12px 0; padding: 0 var(--s2); }

@@ -1,0 +1,32 @@
+/* Shopping tab: To buy, For this trip (one-time items), Suggested. Plain grouped lists under quiet headers. */
+.sechead { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s3); padding: 0 var(--s1) var(--s2); }
+.sechead b { white-space: nowrap; font-size: var(--fs-lead); font-weight: var(--fw-s); letter-spacing: -.01em; }
+.sechead span { text-align: right; font-size: var(--fs-meta); color: var(--text-2); }
+.mt { margin-top: var(--s3); } .note { line-height: 1.5; } .row.tight { gap: var(--s1); }
+
+.lrow { display: flex; align-items: center; gap: var(--s3); min-height: 64px; padding: var(--s2) 0; }
+.lrow .tile { --tw: 40px; width: 40px; height: 40px; border-radius: 10px; padding-bottom: 0; }
+.lrow .tile .gl { display: none; }
+.lrow .tx { flex: 1; min-width: 0; }
+.lrow .tx b { display: block; font-size: var(--fs-body); font-weight: var(--fw-m); }
+.lrow .tx span { font-size: var(--fs-sm); color: var(--text-2); }
+.rowthumb { flex: none; width: 40px; height: 40px; padding: 0; border: 0; background: none; border-radius: 10px; }
+/* row actions are tonal so the screen has one filled blue button at a time (Add) */
+.list .btn.sm.primary { background: var(--accent-tint); color: var(--accent); }
+.list .btn.sm.primary:active { background: var(--fill); }
+
+/* entry row: name, then how much, then the unit */
+.wadd { display: grid; grid-template-columns: 1fr auto; gap: var(--s2); padding: var(--s3); background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-lg); }
+.wadd > input { grid-column: 1 / -1; }
+.wsize { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); }
+@media (min-width: 460px) { .wadd { grid-template-columns: 2fr 1.3fr auto; } .wadd > input { grid-column: auto; } }
+
+.wq { font-style: normal; font-weight: var(--fw-r); color: var(--text-2); margin-left: var(--s2); font-variant-numeric: tabular-nums; }
+.wrow { display: flex; align-items: center; gap: var(--s2); min-height: 64px; padding: var(--s2) 0; }
+.wrow .tx b { font-weight: var(--fw-m); } .wrow .tx span { display: block; font-size: var(--fs-sm); color: var(--text-2); }
+.wrow.done .tx { opacity: .5; } .wrow.done .tx b { text-decoration: line-through; }
+.chk { flex: none; position: relative; width: var(--tap); height: var(--tap); margin-left: -10px; padding: 0; border: 0; background: none; display: grid; place-items: center; color: var(--on-accent); }
+.chk::before { content: ""; position: absolute; width: 24px; height: 24px; border-radius: 12px; border: 1.5px solid var(--hairline-2); transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
+.chk .ic { position: relative; }
+.wrow.done .chk::before { background: var(--ok); border-color: var(--ok); }
+.wrow .btn.sm { white-space: nowrap; }

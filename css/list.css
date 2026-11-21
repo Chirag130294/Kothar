@@ -1,0 +1,48 @@
+/* List view: one inset-grouped table, a header per category, swipe left on a row to take packs out. */
+.ltools { display: flex; justify-content: flex-end; padding: 0 var(--gut); }
+.llist { margin: 0 var(--gut) var(--s4); border-radius: var(--r-lg); overflow: hidden; background: var(--surface); box-shadow: inset 0 0 0 1px var(--hairline); }
+
+.lgh { display: flex; align-items: center; gap: var(--s2); width: 100%; min-height: var(--tap); padding: 0 var(--s3); border: 0; background: var(--surface-2); box-shadow: inset 0 1px 0 var(--hairline); text-align: left; font-size: var(--fs-meta); font-weight: var(--fw-s); color: var(--text); }
+.lgh:first-child { box-shadow: none; }
+.lgh .ic { color: var(--text-2); flex: none; transition: transform var(--t-fast) var(--ease); }
+.lgh.shut .ic { transform: rotate(-90deg); }
+.lgh:disabled { opacity: 1; cursor: default; }
+.lgn { flex: 1; min-width: 0; }
+.lgn .gu { margin-left: var(--s2); font-size: var(--fs-sm); font-weight: var(--fw-r); color: var(--text-2); }
+.lgc { min-width: 22px; text-align: right; font-size: var(--fs-sm); font-weight: var(--fw-m); color: var(--text-2); }
+.lgl { font-size: var(--fs-cap); }
+
+/* the action layer sits behind the row and only shows while it is dragged (no colour leaking at the edges) */
+.trow { position: relative; overflow: hidden; background: var(--surface); }
+.trow::after { content: ""; position: absolute; left: 64px; right: 0; bottom: 0; height: 1px; background: var(--hairline); pointer-events: none; }
+.trow:last-child::after, .trow:has(+ .lgh)::after { display: none; }
+.trow.drag { background: var(--accent); }
+.trow.armed { background: var(--ok); }
+.lact { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; gap: var(--s2); padding-right: var(--s5); color: var(--on-accent); font-weight: var(--fw-s); font-size: var(--fs-meta); visibility: hidden; }
+.trow.drag .lact { visibility: visible; }
+.trow.armed .lact { color: #fff; }
+.lact .go { display: none; } .trow.armed .lact .go { display: inline; } .trow.armed .lact .pull { display: none; }
+
+.lmain { position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); min-height: 60px; background: var(--surface); cursor: pointer; touch-action: pan-y; user-select: none; -webkit-user-select: none; transition: transform var(--t-sheet) var(--ease); }
+.trow.drag .lmain { transition: none; }
+.lmain:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.lmain .tile { --tw: 40px; width: 40px; height: 40px; border-radius: 10px; padding-bottom: 0; }
+.lmain .tile .gl { display: none; }
+.lname { min-width: 0; display: flex; flex-direction: column; }
+.lname b { font-size: var(--fs-body); font-weight: var(--fw-m); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lsub { font-size: var(--fs-sm); color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--gu), var(--font); }
+.lpacks { display: none; font-size: var(--fs-meta); color: var(--text-2); white-space: nowrap; }
+.lqty { font-size: var(--fs-body); font-weight: var(--fw-s); text-align: right; white-space: nowrap; }
+.lqty.low { color: var(--warn); } .lqty.out { color: var(--bad); } .lqty.new { color: var(--accent); font-weight: var(--fw-m); }
+
+/* "Used": swipe-only on phones. On desktop it appears on hover and keyboard focus. If swiping is switched off in Settings it is always shown. */
+.lused { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 var(--s3); border: 0; border-radius: var(--r-sm); font-size: var(--fs-meta); font-weight: var(--fw-m); color: var(--text); background: var(--fill); }
+@media (hover: none) { .lused { display: none; } }
+@media (hover: hover) { .lused { opacity: 0; transition: opacity var(--t-fast) var(--ease); } .trow:hover .lused, .trow:focus-within .lused, .lused:focus-visible { opacity: 1; } }
+.trow.noswipe .lused { display: inline-flex; opacity: 1; min-height: var(--tap); }
+
+@media (min-width: 520px) {
+  .lmain { grid-template-columns: 40px minmax(0, 1fr) minmax(90px, 1.1fr) 76px auto; }
+  .lpacks { display: block; overflow: hidden; text-overflow: ellipsis; }
+  .inpacks { display: none; }
+}

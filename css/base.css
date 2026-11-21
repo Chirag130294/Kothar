@@ -1,0 +1,19 @@
+/* Reset, typography, helpers. */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { background: var(--bg); }
+body { margin: 0; background: var(--bg); color: var(--text); font: var(--fw-r) var(--fs-body)/1.4 var(--font); -webkit-text-size-adjust: 100%; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; cursor: pointer; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3, p { margin: 0; }
+h1 { font-size: var(--fs-large); font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+h2 { font-size: var(--fs-title); font-weight: var(--fw-s); letter-spacing: -.015em; line-height: 1.2; }
+.muted { color: var(--text-2); } .small { font-size: var(--fs-meta); } .gu { font-family: var(--gu); }
+.ic { flex: none; }
+.row { display: flex; gap: var(--s3); align-items: center; } .row > .grow, .grow { flex: 1; min-width: 0; }
+.stack { display: flex; flex-direction: column; gap: var(--s3); }
+/* quantities, dates and counts line up */
+.lqty, .usen, .big, .bignum input, .stepper b, .badge, .lgc, .sub, .q, .tabnum, input[type=number] { font-variant-numeric: tabular-nums; }
+#app { max-width: 560px; min-height: 100vh; margin: 0 auto; position: relative; }
+html.no-gu .gl, html.no-gu .gu, html.no-gu .lsub .gu { display: none; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
