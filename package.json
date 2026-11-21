@@ -1,9 +1,0 @@
-{
-  "name": "kothar-pantry-pwa",
-  "private": true,
-  "type": "module",
-  "description": "Bulk pantry tracker PWA (Firebase + GitHub Pages). package.json only exists so `node --test` can run the unit tests; the app itself has no build step.",
-  "scripts": {
-    "test": "node --test tests/importer.test.js tests/stock.test.js"
-  }
-}
